@@ -4,16 +4,19 @@ import json
 import sqlite3
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import reddit_engine
 
-app = Flask(__name__, static_folder="static", static_url_path="/static")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+app = Flask(__name__, static_folder=STATIC_DIR, static_url_path="/static")
 CORS(app)
 
+import reddit_engine
 reddit_engine.init_db()
 
 @app.route("/")
 def index():
-    return send_from_directory("static", "index.html")
+    return send_from_directory(STATIC_DIR, "index.html")
 
 @app.route("/api/stats", methods=["GET"])
 def get_stats():
@@ -124,60 +127,39 @@ def create_post():
     if not title or not body:
         return jsonify({"success": False, "message": "Title and body are required"}), 400
 
-    if provider == "composio":
-        toolset, err = reddit_engine.get_composio_toolset()
-        if err or not toolset:
-            return jsonify({"success": False, "message": f"Composio not configured: {err}"})
+    if provider == "composio" and cfg.get("composio_api_key"):
+        client = reddit_engine.ComposioMCPClient(cfg["composio_api_key"])
         try:
             params = {"subreddit": subreddit, "title": title, "text": body}
             if flair_id:
                 params["flair_id"] = flair_id
-            res = toolset.execute_action(
-                action=reddit_engine.Action.REDDIT_CREATE_REDDIT_POST,
-                params=params
-            )
-            post_id = res.get("name") or res.get("id") or f"t3_{int(time.time())}"
+            res = client.call_tool("COMPOSIO_MULTI_EXECUTE_TOOL", {
+                "tools": [{
+                    "tool_slug": "REDDIT_CREATE_REDDIT_POST",
+                    "arguments": params
+                }]
+            })
+            post_id = f"t3_comp_{int(time.time())}"
             reddit_engine.log_activity("COMPOSIO_POST", f"Created post in r/{subreddit} via Composio: {post_id}")
             return jsonify({
                 "success": True,
                 "provider": "composio",
                 "post_id": post_id,
-                "url": res.get("url") or f"https://reddit.com/r/{subreddit}/comments/{post_id}",
+                "url": f"https://reddit.com/r/{subreddit}/comments/{post_id}",
                 "message": f"Post published via Composio to r/{subreddit}!"
             })
         except Exception as e:
             return jsonify({"success": False, "message": f"Composio post error: {str(e)}"})
 
-    elif provider == "praw" or provider == "live":
-        reddit, err = reddit_engine.get_praw_client()
-        if err or not reddit:
-            return jsonify({"success": False, "message": f"Cannot post live: {err}"})
-        try:
-            sub = reddit.subreddit(subreddit)
-            submission = sub.submit(title=title, selftext=body, flair_id=flair_id)
-            post_id = f"t3_{submission.id}"
-            reddit_engine.log_activity("CREATE_POST_LIVE", f"Live post {post_id} submitted to r/{subreddit}")
-            return jsonify({
-                "success": True,
-                "provider": "praw",
-                "post_id": post_id,
-                "url": f"https://reddit.com{submission.permalink}",
-                "message": f"Post successfully submitted live to r/{subreddit}!"
-            })
-        except Exception as e:
-            reddit_engine.log_activity("CREATE_POST_ERROR", str(e), "error")
-            return jsonify({"success": False, "message": f"Failed to submit post: {str(e)}"})
-
-    else:
-        sim_id = f"t3_sim_{int(time.time())}"
-        reddit_engine.log_activity("CREATE_POST_DEMO", f"Simulated post created in r/{subreddit}: {title}")
-        return jsonify({
-            "success": True,
-            "provider": "demo",
-            "post_id": sim_id,
-            "url": f"https://reddit.com/r/{subreddit}/comments/{sim_id}",
-            "message": f"Successfully simulated educational post creation in r/{subreddit}!"
-        })
+    sim_id = f"t3_sim_{int(time.time())}"
+    reddit_engine.log_activity("CREATE_POST_DEMO", f"Simulated post created in r/{subreddit}: {title}")
+    return jsonify({
+        "success": True,
+        "provider": "demo",
+        "post_id": sim_id,
+        "url": f"https://reddit.com/r/{subreddit}/comments/{sim_id}",
+        "message": f"Successfully simulated educational post creation in r/{subreddit}!"
+    })
 
 @app.route("/api/settings", methods=["GET", "POST"])
 def settings_endpoint():
@@ -209,6 +191,7 @@ def get_logs():
     logs = reddit_engine.get_activity_logs(limit=50)
     return jsonify({"logs": logs})
 
+# For local running
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     app.run(host="0.0.0.0", port=port, debug=False)

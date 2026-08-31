@@ -11,8 +11,16 @@ import uuid
 import requests
 from typing import List, Dict, Any, Optional
 
-DB_PATH = "/home/user/reddit_assure_automation/automation.db"
-CONFIG_PATH = "/home/user/reddit_assure_automation/config.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+IS_SERVERLESS = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+
+if IS_SERVERLESS:
+    DB_PATH = "/tmp/automation.db"
+    CONFIG_PATH = "/tmp/config.json"
+else:
+    DB_PATH = os.path.join(BASE_DIR, "automation.db")
+    CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
+
 COMPOSIO_MCP_URL = "https://connect.composio.dev/mcp"
 
 DEFAULT_CONFIG = {
@@ -142,79 +150,85 @@ SEED_LEADS = [
 ]
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS leads (
-            id TEXT PRIMARY KEY,
-            subreddit TEXT,
-            title TEXT,
-            author TEXT,
-            body TEXT,
-            url TEXT,
-            created_utc REAL,
-            intent TEXT,
-            sentiment TEXT,
-            location TEXT,
-            status TEXT DEFAULT 'pending',
-            discovered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS drafts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            lead_id TEXT,
-            post_fullname TEXT,
-            response_type TEXT,
-            draft_text TEXT,
-            status TEXT DEFAULT 'draft',
-            published_comment_id TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (lead_id) REFERENCES leads(id)
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS activity_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            action TEXT,
-            details TEXT,
-            status TEXT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS custom_posts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            subreddit TEXT,
-            title TEXT,
-            body TEXT,
-            flair_id TEXT,
-            status TEXT DEFAULT 'draft',
-            post_id TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-
-    cursor.execute("SELECT COUNT(*) FROM leads")
-    if cursor.fetchone()[0] == 0:
-        for lead in SEED_LEADS:
-            cursor.execute("""
-                INSERT OR IGNORE INTO leads (id, subreddit, title, author, body, url, created_utc, intent, sentiment, location, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                lead["id"], lead["subreddit"], lead["title"], lead["author"],
-                lead["body"], lead["url"], lead["created_utc"], lead["intent"],
-                lead["sentiment"], lead["location"], lead["status"]
-            ))
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS leads (
+                id TEXT PRIMARY KEY,
+                subreddit TEXT,
+                title TEXT,
+                author TEXT,
+                body TEXT,
+                url TEXT,
+                created_utc REAL,
+                intent TEXT,
+                sentiment TEXT,
+                location TEXT,
+                status TEXT DEFAULT 'pending',
+                discovered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS drafts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                lead_id TEXT,
+                post_fullname TEXT,
+                response_type TEXT,
+                draft_text TEXT,
+                status TEXT DEFAULT 'draft',
+                published_comment_id TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (lead_id) REFERENCES leads(id)
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS activity_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                action TEXT,
+                details TEXT,
+                status TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS custom_posts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                subreddit TEXT,
+                title TEXT,
+                body TEXT,
+                flair_id TEXT,
+                status TEXT DEFAULT 'draft',
+                post_id TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         conn.commit()
-    conn.close()
+
+        cursor.execute("SELECT COUNT(*) FROM leads")
+        if cursor.fetchone()[0] == 0:
+            for lead in SEED_LEADS:
+                cursor.execute("""
+                    INSERT OR IGNORE INTO leads (id, subreddit, title, author, body, url, created_utc, intent, sentiment, location, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    lead["id"], lead["subreddit"], lead["title"], lead["author"],
+                    lead["body"], lead["url"], lead["created_utc"], lead["intent"],
+                    lead["sentiment"], lead["location"], lead["status"]
+                ))
+            conn.commit()
+        conn.close()
+    except Exception as e:
+        print("Database init exception:", e)
 
 def load_config() -> Dict[str, Any]:
     if not os.path.exists(CONFIG_PATH):
-        with open(CONFIG_PATH, "w") as f:
-            json.dump(DEFAULT_CONFIG, f, indent=2)
+        try:
+            with open(CONFIG_PATH, "w") as f:
+                json.dump(DEFAULT_CONFIG, f, indent=2)
+        except Exception:
+            pass
         return DEFAULT_CONFIG
     try:
         with open(CONFIG_PATH, "r") as f:
@@ -227,15 +241,21 @@ def load_config() -> Dict[str, Any]:
         return DEFAULT_CONFIG
 
 def save_config(cfg: Dict[str, Any]):
-    with open(CONFIG_PATH, "w") as f:
-        json.dump(cfg, f, indent=2)
+    try:
+        with open(CONFIG_PATH, "w") as f:
+            json.dump(cfg, f, indent=2)
+    except Exception as e:
+        print("Config save error:", e)
 
 def log_activity(action: str, details: str, status: str = "success"):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO activity_logs (action, details, status) VALUES (?, ?, ?)", (action, details, status))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO activity_logs (action, details, status) VALUES (?, ?, ?)", (action, details, status))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 # COMPOSIO MCP CLIENT
 class ComposioMCPClient:
@@ -289,7 +309,10 @@ def test_reddit_connection() -> Dict[str, Any]:
         if "data" in res and "results" in res["data"] and "reddit" in res["data"]["results"]:
             reddit_info = res["data"]["results"]["reddit"]
             status = reddit_info.get("status")
-            if status == "Active" or status == "active":
+            accounts = reddit_info.get("accounts", [])
+            has_active = any(a.get("status") in ["active", "Active", "ACTIVE"] for a in accounts) or status in ["Active", "active"]
+            
+            if has_active:
                 return {
                     "status": "connected_live",
                     "provider": "composio",
@@ -343,7 +366,6 @@ def scan_reddit_leads(custom_query: Optional[str] = None) -> List[Dict[str, Any]
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # If Composio has active connection
     if cfg.get("provider") == "composio" and cfg.get("composio_api_key"):
         client = ComposioMCPClient(cfg["composio_api_key"])
         search_q = custom_query or "hair transplant OR PRP OR QR678 OR Mumbai"
