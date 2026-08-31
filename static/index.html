@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assure Clinic — Reddit Automation & Lead Command Center</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+              800: '#0c4a6e',
+              900: '#0f172a'
+            },
+            clinical: {
+              teal: '#0d9488',
+              navy: '#0f172a',
+              card: '#1e293b',
+              accent: '#38bdf8'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(56, 189, 248, 0.3);
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(56, 189, 248, 0.6);
+    }
+    .glass-panel {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-sky-500 selection:text-white">
+
+  <!-- Top Header Navigation -->
+  <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
+          <i class="fa-solid fa-stethoscope text-xl"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="font-bold text-lg tracking-tight text-white">Assure Clinic</h1>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 font-medium">Reddit Growth Engine</span>
+          </div>
+          <p class="text-xs text-slate-400">MD-Led Hair Restoration & Aesthetics • 14 Clinics (India & Dubai)</p>
+        </div>
+      </div>
+
+      <!-- Live Connection Status Badge -->
+      <div class="flex items-center space-x-4">
+        <div id="connection-status-pill" class="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-xs text-slate-300">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="connection-status-text">Checking Connection...</span>
+        </div>
+        <button onclick="switchTab('settings')" class="p-2 text-slate-400 hover:text-sky-400 hover:bg-slate-800 rounded-lg transition">
+          <i class="fa-solid fa-gear text-base"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 flex flex-col space-y-6 w-full">
+
+    <!-- Metrics Bar -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div class="glass-panel p-4 rounded-xl">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-400">Total Tracked Leads</span>
+          <i class="fa-solid fa-bullseye text-sky-400"></i>
+        </div>
+        <div class="mt-2 flex items-baseline space-x-2">
+          <span id="stat-total-leads" class="text-2xl font-bold text-white">--</span>
+          <span class="text-xs text-emerald-400 font-medium"><i class="fa-solid fa-arrow-trend-up"></i> Live</span>
+        </div>
+      </div>
+
+      <div class="glass-panel p-4 rounded-xl">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-400">Pending Drafts</span>
+          <i class="fa-solid fa-feather text-amber-400"></i>
+        </div>
+        <div class="mt-2 flex items-baseline space-x-2">
+          <span id="stat-pending-drafts" class="text-2xl font-bold text-amber-300">--</span>
+          <span class="text-xs text-slate-400">Awaiting review</span>
+        </div>
+      </div>
+
+      <div class="glass-panel p-4 rounded-xl">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-400">Published Comments</span>
+          <i class="fa-solid fa-comments text-teal-400"></i>
+        </div>
+        <div class="mt-2 flex items-baseline space-x-2">
+          <span id="stat-published" class="text-2xl font-bold text-teal-300">--</span>
+          <span class="text-xs text-teal-400/80">Active on Reddit</span>
+        </div>
+      </div>
+
+      <div class="glass-panel p-4 rounded-xl">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-400">Reddit Anti-Ban Safety</span>
+          <i class="fa-solid fa-shield-halved text-sky-400"></i>
+        </div>
+        <div class="mt-2 flex items-baseline space-x-2">
+          <span class="text-2xl font-bold text-emerald-400">98%</span>
+          <span class="text-xs text-slate-400">9:1 Value Rule</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="border-b border-slate-800 flex space-x-2 overflow-x-auto pb-2 custom-scrollbar">
+      <button onclick="switchTab('scanner')" id="tab-btn-scanner" class="tab-btn active px-4 py-2.5 text-sm font-semibold rounded-lg flex items-center space-x-2 bg-sky-500/10 text-sky-400 border border-sky-500/20">
+        <i class="fa-solid fa-radar"></i>
+        <span>Lead Radar & Scanner</span>
+      </button>
+      <button onclick="switchTab('studio')" id="tab-btn-studio" class="tab-btn px-4 py-2.5 text-sm font-medium rounded-lg flex items-center space-x-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <span>AI Medical Response Studio</span>
+      </button>
+      <button onclick="switchTab('queue')" id="tab-btn-queue" class="tab-btn px-4 py-2.5 text-sm font-medium rounded-lg flex items-center space-x-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition">
+        <i class="fa-solid fa-paper-plane"></i>
+        <span>Publishing Queue</span>
+      </button>
+      <button onclick="switchTab('postbuilder')" id="tab-btn-postbuilder" class="tab-btn px-4 py-2.5 text-sm font-medium rounded-lg flex items-center space-x-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition">
+        <i class="fa-solid fa-file-pen"></i>
+        <span>Educational Guide Creator</span>
+      </button>
+      <button onclick="switchTab('settings')" id="tab-btn-settings" class="tab-btn px-4 py-2.5 text-sm font-medium rounded-lg flex items-center space-x-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition">
+        <i class="fa-solid fa-sliders"></i>
+        <span>API & Composio Settings</span>
+      </button>
+      <button onclick="switchTab('logs')" id="tab-btn-logs" class="tab-btn px-4 py-2.5 text-sm font-medium rounded-lg flex items-center space-x-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition">
+        <i class="fa-solid fa-list-check"></i>
+        <span>Live Activity Logs</span>
+      </button>
+    </div>
+
+    <!-- TAB 1: LEAD SCANNER & RADAR -->
+    <div id="tab-scanner" class="tab-content space-y-4">
+      <div class="glass-panel p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="flex-1 w-full flex items-center space-x-3">
+          <div class="relative flex-1">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500"></i>
+            <input type="text" id="scan-custom-query" placeholder="Filter by keyword (e.g., 'mumbai', 'qr678', 'grafts', 'assure clinic')..." class="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700/80 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500">
+          </div>
+          <select id="filter-city" onchange="filterLeadsUI()" class="bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-sky-500">
+            <option value="all">All Locations</option>
+            <option value="Mumbai">Mumbai (Peddar Rd/Andheri)</option>
+            <option value="Delhi">Delhi</option>
+            <option value="Bangalore">Bangalore</option>
+            <option value="Hyderabad">Hyderabad</option>
+            <option value="Pune">Pune</option>
+            <option value="Lucknow">Lucknow</option>
+            <option value="Ahmedabad">Ahmedabad</option>
+            <option value="Dubai">Dubai</option>
+          </select>
+        </div>
+        <div class="flex items-center space-x-3 w-full md:w-auto">
+          <button onclick="triggerScan()" class="flex-1 md:flex-initial px-4 py-2 bg-gradient-to-r from-sky-600 to-teal-500 hover:from-sky-500 hover:to-teal-400 text-white text-sm font-semibold rounded-lg shadow-lg shadow-sky-500/20 flex items-center justify-center space-x-2 transition">
+            <i class="fa-solid fa-satellite-dish"></i>
+            <span>Scan Subreddits Now</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Lead Cards Grid -->
+      <div id="leads-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
+
+    <!-- TAB 2: AI MEDICAL RESPONSE STUDIO -->
+    <div id="tab-studio" class="tab-content hidden space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left: Selected Context & Lead -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="glass-panel p-5 rounded-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 class="font-semibold text-white flex items-center space-x-2">
+                <i class="fa-solid fa-comments text-sky-400"></i>
+                <span>Target Discussion</span>
+              </h3>
+              <span id="studio-lead-fullname" class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">Select a lead</span>
+            </div>
+
+            <div id="studio-lead-box" class="space-y-3">
+              <div class="p-4 bg-slate-900/80 rounded-lg border border-slate-800/80">
+                <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                  <span id="studio-lead-sub">r/HairTransplants</span>
+                  <span id="studio-lead-author">u/user</span>
+                </div>
+                <h4 id="studio-lead-title" class="font-semibold text-slate-200 text-sm mb-2">No lead selected yet. Click "Craft Reply" on any lead card in the Radar.</h4>
+                <p id="studio-lead-body" class="text-xs text-slate-400 leading-relaxed max-h-36 overflow-y-auto custom-scrollbar">Post text will appear here.</p>
+              </div>
+            </div>
+
+            <!-- Response Angle Selector -->
+            <div class="space-y-2">
+              <label class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Clinical Angle & Positioning</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="setStudioAngle('clinical_advisor')" id="angle-btn-clinical_advisor" class="angle-btn active p-2.5 rounded-lg border text-xs font-medium text-left bg-sky-500/10 border-sky-500 text-sky-300">
+                  <div class="font-semibold flex items-center space-x-1.5">
+                    <i class="fa-solid fa-user-doctor"></i>
+                    <span>MD Doctor Advice</span>
+                  </div>
+                  <div class="text-[10px] text-slate-400 mt-1">Technique, hairline naturality & 95% survival</div>
+                </button>
+                <button onclick="setStudioAngle('comparison_cost')" id="angle-btn-comparison_cost" class="angle-btn p-2.5 rounded-lg border border-slate-800 text-xs font-medium text-left bg-slate-900 hover:bg-slate-800/80 text-slate-300">
+                  <div class="font-semibold flex items-center space-x-1.5">
+                    <i class="fa-solid fa-scale-balanced"></i>
+                    <span>Cost & Quality Matrix</span>
+                  </div>
+                  <div class="text-[10px] text-slate-400 mt-1">Doctor vs technician, per-graft math</div>
+                </button>
+                <button onclick="setStudioAngle('prp_qr678_guide')" id="angle-btn-prp_qr678_guide" class="angle-btn p-2.5 rounded-lg border border-slate-800 text-xs font-medium text-left bg-slate-900 hover:bg-slate-800/80 text-slate-300">
+                  <div class="font-semibold flex items-center space-x-1.5">
+                    <i class="fa-solid fa-dna"></i>
+                    <span>QR678 vs PRP / GFC</span>
+                  </div>
+                  <div class="text-[10px] text-slate-400 mt-1">Non-surgical hair density comparison</div>
+                </button>
+                <button onclick="setStudioAngle('brand_reputation')" id="angle-btn-brand_reputation" class="angle-btn p-2.5 rounded-lg border border-slate-800 text-xs font-medium text-left bg-slate-900 hover:bg-slate-800/80 text-slate-300">
+                  <div class="font-semibold flex items-center space-x-1.5">
+                    <i class="fa-solid fa-award"></i>
+                    <span>Assure Verification</span>
+                  </div>
+                  <div class="text-[10px] text-slate-400 mt-1">Dr. Abhishek Pilani & 20k+ results</div>
+                </button>
+              </div>
+            </div>
+
+            <button onclick="regenerateAIResponse()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg flex items-center justify-center space-x-2 border border-slate-700 transition">
+              <i class="fa-solid fa-arrows-rotate"></i>
+              <span>Regenerate Clinical AI Response</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: AI Draft Editor & Action Bar -->
+        <div class="lg:col-span-7 space-y-4">
+          <div class="glass-panel p-5 rounded-xl space-y-4 flex flex-col h-full">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-code text-teal-400"></i>
+                <h3 class="font-semibold text-white">Generated Reddit Markdown Comment</h3>
+              </div>
+              <div class="flex items-center space-x-2">
+                <button onclick="copyDraftToClipboard()" class="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 flex items-center space-x-1 transition">
+                  <i class="fa-regular fa-copy"></i>
+                  <span>Copy</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="flex-1">
+              <textarea id="studio-draft-editor" class="w-full h-80 bg-slate-900/90 border border-slate-700/80 rounded-xl p-4 text-xs sm:text-sm font-mono text-slate-200 leading-relaxed focus:outline-none focus:border-sky-500 custom-scrollbar" placeholder="Generated draft markdown will appear here for review and editing..."></textarea>
+            </div>
+
+            <div class="p-3 bg-slate-900/50 rounded-lg border border-slate-800 text-xs space-y-1 text-slate-400">
+              <div class="font-semibold text-slate-300 flex items-center space-x-1.5">
+                <i class="fa-solid fa-circle-check text-teal-400"></i>
+                <span>Automated Compliance & Clinical Guardrails:</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-[11px] pt-1 text-slate-400">
+                <div>✓ MD Dermatologist Authority Tagged</div>
+                <div>✓ UHDHT (UFME + DSHI) Protocol Cited</div>
+                <div>✓ 95%+ Graft Survival Safeguard</div>
+                <div>✓ Medical Disclaimer Attached</div>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center space-x-3 pt-2">
+              <button onclick="saveToQueue()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold rounded-lg border border-slate-700 flex items-center justify-center space-x-2 transition">
+                <i class="fa-solid fa-clock"></i>
+                <span>Save to Queue</span>
+              </button>
+              <button onclick="publishDirectly()" class="flex-1 py-2.5 bg-gradient-to-r from-sky-600 to-teal-500 hover:from-sky-500 hover:to-teal-400 text-white text-sm font-bold rounded-lg shadow-lg shadow-sky-500/20 flex items-center justify-center space-x-2 transition">
+                <i class="fa-solid fa-paper-plane"></i>
+                <span>Publish to Reddit (Live/Demo)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: PUBLISHING QUEUE & TRACKER -->
+    <div id="tab-queue" class="tab-content hidden space-y-4">
+      <div class="glass-panel p-5 rounded-xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <h3 class="font-semibold text-white">Queue & Published Reddit Actions</h3>
+            <p class="text-xs text-slate-400">Track pending responses, rate limit throttles, and published comment links.</p>
+          </div>
+          <button onclick="loadDrafts()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded-lg border border-slate-700 transition">
+            <i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh Queue
+          </button>
+        </div>
+
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/80 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-3">Target Post / Subreddit</th>
+                <th class="p-3">Angle / Intent</th>
+                <th class="p-3">Draft Preview</th>
+                <th class="p-3">Status</th>
+                <th class="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="queue-table-body" class="divide-y divide-slate-800/60 text-slate-300"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: EDUCATIONAL POST BUILDER -->
+    <div id="tab-postbuilder" class="tab-content hidden space-y-4">
+      <div class="glass-panel p-6 rounded-xl space-y-6">
+        <div class="border-b border-slate-800 pb-4 flex items-center justify-between">
+          <div>
+            <h3 class="font-bold text-lg text-white">Educational Hair Restoration Post Generator</h3>
+            <p class="text-xs text-slate-400">Create high-value guides, AMA foundations, and case study breakdowns for r/HairTransplants & r/IndianSkincareAddicts.</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="loadPostPreset('graft_math')" class="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-lg border border-slate-700 transition">
+              Preset: Graft Survival Math
+            </button>
+            <button onclick="loadPostPreset('hairline_rules')" class="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-teal-400 rounded-lg border border-slate-700 transition">
+              Preset: Hairline Design Rules
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Target Subreddit</label>
+            <select id="post-target-sub" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+              <option value="HairTransplants">r/HairTransplants</option>
+              <option value="IndianSkincareAddicts">r/IndianSkincareAddicts</option>
+              <option value="tressless">r/tressless</option>
+              <option value="mumbai">r/mumbai</option>
+              <option value="delhi">r/delhi</option>
+              <option value="bangalore">r/bangalore</option>
+            </select>
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Post Title</label>
+            <input type="text" id="post-title" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200" placeholder="e.g., [Clinical Guide] The 4 Pillars of 95%+ Graft Survival in Hair Restoration">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Post Content (Markdown format)</label>
+          <textarea id="post-body" rows="12" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-xs sm:text-sm font-mono text-slate-200 focus:outline-none focus:border-sky-500 custom-scrollbar" placeholder="Draft your detailed guide here..."></textarea>
+        </div>
+
+        <div class="flex items-center justify-between pt-2">
+          <span class="text-xs text-slate-500"><i class="fa-solid fa-info-circle mr-1"></i> Reddit allows 1 major guide post per subreddit every 24-48 hours.</span>
+          <button onclick="submitEducationalPost()" class="px-6 py-2.5 bg-gradient-to-r from-sky-600 to-teal-500 hover:from-sky-500 hover:to-teal-400 text-white text-sm font-bold rounded-lg shadow-lg shadow-sky-500/20 flex items-center space-x-2 transition">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span>Submit Post to Subreddit</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: API & COMPOSIO SETTINGS -->
+    <div id="tab-settings" class="tab-content hidden space-y-6">
+      <div class="glass-panel p-6 rounded-xl space-y-6">
+        <div class="border-b border-slate-800 pb-4">
+          <h3 class="font-bold text-lg text-white">Connection & Provider Configuration</h3>
+          <p class="text-xs text-slate-400">Choose your connection provider: Composio Toolkit (Recommended), Direct Reddit API (PRAW), or Demo Testbed.</p>
+        </div>
+
+        <!-- Provider Switcher -->
+        <div class="p-4 bg-slate-900/90 rounded-xl border border-slate-800 space-y-3">
+          <div class="font-semibold text-sm text-white flex items-center space-x-2">
+            <i class="fa-solid fa-cubes text-sky-400"></i>
+            <span>Select Connection Provider</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div onclick="selectProvider('composio')" id="provider-card-composio" class="cursor-pointer p-3.5 rounded-lg border border-slate-800 bg-slate-900 hover:border-sky-500/50 transition">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs text-slate-200 flex items-center space-x-1.5">
+                  <i class="fa-solid fa-bolt text-teal-400"></i>
+                  <span>Composio Reddit Toolkit</span>
+                </span>
+                <span class="text-[10px] bg-teal-500/10 text-teal-300 px-1.5 py-0.5 rounded">Fastest</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1">Connect Reddit OAuth instantly via Composio API Key.</p>
+            </div>
+
+            <div onclick="selectProvider('praw')" id="provider-card-praw" class="cursor-pointer p-3.5 rounded-lg border border-slate-800 bg-slate-900 hover:border-sky-500/50 transition">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs text-slate-200 flex items-center space-x-1.5">
+                  <i class="fa-brands fa-reddit text-rose-400"></i>
+                  <span>Reddit API / PRAW</span>
+                </span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1">Direct Developer app credentials (Client ID + Secret).</p>
+            </div>
+
+            <div onclick="selectProvider('demo')" id="provider-card-demo" class="cursor-pointer p-3.5 rounded-lg border border-slate-800 bg-slate-900 hover:border-sky-500/50 transition">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs text-slate-200 flex items-center space-x-1.5">
+                  <i class="fa-solid fa-flask text-sky-400"></i>
+                  <span>Demo Testbed</span>
+                </span>
+                <span class="text-[10px] bg-sky-500/10 text-sky-300 px-1.5 py-0.5 rounded">Active</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1">Simulated leads & drafts without live credentials.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Composio Configuration Box -->
+        <div id="composio-config-box" class="space-y-4 p-4 rounded-xl bg-slate-900/60 border border-teal-500/30">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-xs text-teal-300 uppercase tracking-wider flex items-center space-x-1.5">
+              <i class="fa-solid fa-key"></i>
+              <span>Composio API Key & Entity</span>
+            </span>
+            <a href="https://app.composio.dev/settings" target="_blank" class="text-[11px] text-sky-400 hover:underline">Get Composio API Key <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Composio API Key</label>
+              <input type="password" id="cfg-composio-key" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-slate-200" placeholder="comp_live_...">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Entity ID (Optional)</label>
+              <input type="text" id="cfg-composio-entity" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-slate-200" placeholder="default">
+            </div>
+          </div>
+          <div id="composio-oauth-cta" class="hidden p-3 bg-amber-950/40 border border-amber-800/60 rounded-lg flex items-center justify-between">
+            <div class="text-xs text-amber-200">
+              <i class="fa-solid fa-circle-exclamation mr-1 text-amber-400"></i> Reddit OAuth connection required for this Composio account.
+            </div>
+            <a id="composio-oauth-link" href="#" target="_blank" class="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded transition">
+              Connect Reddit OAuth
+            </a>
+          </div>
+        </div>
+
+        <!-- Reddit API (PRAW) Form -->
+        <div id="praw-config-box" class="space-y-4 p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+          <span class="font-semibold text-xs text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
+            <i class="fa-brands fa-reddit text-rose-400"></i>
+            <span>Direct Reddit Developer App (PRAW)</span>
+          </span>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Reddit Client ID</label>
+              <input type="text" id="cfg-client-id" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-slate-200" placeholder="e.g. 14-char client id">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Reddit Client Secret</label>
+              <input type="password" id="cfg-client-secret" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-slate-200" placeholder="e.g. 27-char client secret">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Reddit Username</label>
+              <input type="text" id="cfg-username" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-slate-200" placeholder="e.g. AssureClinic_Official">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Reddit Password</label>
+              <input type="password" id="cfg-password" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-slate-200" placeholder="Account password">
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2">
+          <button onclick="testConnection()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 flex items-center space-x-2 transition">
+            <i class="fa-solid fa-plug"></i>
+            <span>Test Connection</span>
+          </button>
+          <button onclick="saveSettings()" class="px-6 py-2 bg-gradient-to-r from-sky-600 to-teal-500 hover:from-sky-500 hover:to-teal-400 text-white text-xs font-bold rounded-lg shadow-lg shadow-sky-500/20 transition">
+            Save Configuration
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: AUDIT & ACTIVITY LOGS -->
+    <div id="tab-logs" class="tab-content hidden space-y-4">
+      <div class="glass-panel p-5 rounded-xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <h3 class="font-semibold text-white">System & Automation Activity Stream</h3>
+          <button onclick="loadLogs()" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded border border-slate-700">
+            <i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh
+          </button>
+        </div>
+        <div id="logs-container" class="space-y-2 font-mono text-xs max-h-96 overflow-y-auto custom-scrollbar"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 border border-slate-700 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 text-sm">
+    <i id="toast-icon" class="fa-solid fa-circle-check text-teal-400 text-lg"></i>
+    <span id="toast-message" class="text-slate-200 font-medium">Notification message</span>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
